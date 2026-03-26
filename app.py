@@ -29,48 +29,59 @@ def check_password_strength(pwd):
     return "✅ Excellent", "#008000"
 
 def show_preview(file_data, file_name):
-    """UPDATED: Renders a visual preview compatible with Live Cloud links."""
+    """Smart Preview Logic: Prevents browser crashes on large files."""
     file_ext = file_name.split('.')[-1].lower()
+    file_size_mb = len(file_data) / (1024 * 1024)
     
+    # --- IMAGE PREVIEW ---
     if file_ext in ['png', 'jpg', 'jpeg']:
-        st.image(file_data, caption="🖼️ Decrypted Preview", width="stretch")
+        st.image(file_data, caption="✨ Decrypted Preview", width="stretch")
         
+    # --- TEXT PREVIEW ---
     elif file_ext == 'txt':
-        try:
-            text_content = file_data.decode('utf-8', errors='ignore')
-            st.text_area("📄 Text Content", value=text_content, height=250)
-        except:
-            st.error("Encoding Error: Could not display text preview.")
+        if file_size_mb < 1:
+            try:
+                text_content = file_data.decode('utf-8', errors='ignore')
+                st.text_area("📄 Text Content", value=text_content, height=250)
+            except:
+                st.error("Encoding Error: Could not display text preview.")
+        else:
+            st.warning("⚠️ Text file is too large for live preview (>1MB). Please download.")
             
+    # --- PDF PREVIEW (Hardened for Cloud) ---
     elif file_ext == 'pdf':
-        # Using iframe instead of embed for better browser compatibility on the web
-        base64_pdf = base64.b64encode(file_data).decode('utf-8')
-        pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="600px" style="border:none;"></iframe>'
-        st.markdown(pdf_display, unsafe_allow_html=True)
+        if file_size_mb < 2.5:  # Standard browser limit for Base64 rendering
+            base64_pdf = base64.b64encode(file_data).decode('utf-8')
+            pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}#toolbar=0" width="100%" height="600px" style="border:none; border-radius:10px;"></iframe>'
+            st.markdown(pdf_display, unsafe_allow_html=True)
+        else:
+            st.warning(f"📦 File Size: {file_size_mb:.2f}MB. PDF is too large for browser preview. Integrity is 100% verified—please download below.")
+            
     else:
         st.info("📦 Preview not supported for this format, but the file is ready for download.")
 
 # --- 3. THE USER INTERFACE ---
-st.title("🛡️ CipherVault: Professional File Security System")
+st.title("🛡️ CipherVault: Professional File Security")
+st.write("Advanced Encryption (AES-256) & Integrity (SHA-256) Suite")
 st.markdown("---")
 
 # Sidebar for Authentication and Analysis
 with st.sidebar:
     st.header("🔑 Authentication")
-    password = st.text_input("Master Password", type="password", help="The key used to scramble/unscramble your files.")
+    password = st.text_input("Master Password", type="password", help="The key used to lock/unlock your files.")
     
     if password:
         msg, color = check_password_strength(password)
         st.markdown(f"**Security Level:** <span style='color:{color}'>{msg}</span>", unsafe_allow_html=True)
     
     st.divider()
-    st.write("🔍 **Integrity Mode:** SHA-256 Hashing Active")
+    st.write("🔍 **Integrity Mode:** SHA-256 Active")
     st.write("⚙️ **Algorithm:** AES-256 (Symmetric)")
     
-    if st.button("🗑️ Wipe Session"):
+    if st.button("🗑️ Wipe Session Memory"):
         st.rerun()
 
-# Logic flow based on Password input
+# Application Logic
 if password:
     key = get_key_from_password(password)
     fernet = Fernet(key)
@@ -91,9 +102,9 @@ if password:
 
             if st.button("🚀 Execute Encryption"):
                 encrypted_data = fernet.encrypt(file_data)
-                st.success("✅ Encryption Successful!")
+                st.success("✅ Encryption Successful! Data is now a secure ciphertext.")
                 st.download_button(
-                    label="📥 Download Encrypted File",
+                    label="📥 Download Encrypted (.bin) File",
                     data=encrypted_data,
                     file_name=f"LOCKED_{file_to_lock.name}",
                     mime="application/octet-stream"
@@ -114,7 +125,7 @@ if password:
                     original_name = file_to_unlock.name.replace("LOCKED_", "")
                     restored_hash = calculate_hash(decrypted_content)
                     
-                    st.success(f"🔓 Decryption Successful! Integrity Verified.")
+                    st.success(f"🔓 Decryption Successful! Integrity Verified via SHA-256.")
                     st.write(f"**Restored Hash:** `{restored_hash}`")
                     
                     st.divider()
@@ -128,9 +139,9 @@ if password:
                         mime="application/octet-stream"
                     )
                 except Exception:
-                    st.error("❌ Decryption Failed! Wrong password or the file was tampered with.")
+                    st.error("❌ Decryption Failed! Check your password or file integrity.")
 else:
-    st.warning("👈 Enter a password in the sidebar to unlock the vault.")
+    st.warning("👈 Please enter a Master Password in the sidebar to enter the vault.")
 
 # --- 4. THE FOOTER ---
 st.markdown("---")
