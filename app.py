@@ -22,40 +22,47 @@ def calculate_hash(data):
 def check_password_strength(pwd):
     """Analyzes password complexity for security best practices."""
     if len(pwd) < 8: return "🔴 Weak (Too short)", "#ff4b4b"
-    if not re.search("[a-z]", pwd) or not re.search("[A-Z]", pwd):
-        return "🟡 Medium (Add Uppercase)", "#ffa500"
-    if not re.search("[0-9]", pwd):
-        return "🟢 Strong (Add Numbers)", "#2ecc71"
+    if not re.search("[0-9]", pwd): return "🟡 Medium (Add Numbers)", "#ffa500"
+    if not re.search("[A-Z]", pwd): return "🟢 Strong (Add Uppercase)", "#2ecc71"
     return "✅ Excellent", "#008000"
 
 def show_preview(file_data, file_name):
-    """Smart Preview Logic: Prevents browser crashes on large files."""
+    """Bypasses Microsoft/Chrome security blocks for Live Cloud links."""
     file_ext = file_name.split('.')[-1].lower()
     file_size_mb = len(file_data) / (1024 * 1024)
     
-    # --- IMAGE PREVIEW ---
+    # --- IMAGES ---
     if file_ext in ['png', 'jpg', 'jpeg']:
         st.image(file_data, caption="✨ Decrypted Preview", width="stretch")
         
-    # --- TEXT PREVIEW ---
+    # --- TEXT ---
     elif file_ext == 'txt':
-        if file_size_mb < 1:
-            try:
-                text_content = file_data.decode('utf-8', errors='ignore')
-                st.text_area("📄 Text Content", value=text_content, height=250)
-            except:
-                st.error("Encoding Error: Could not display text preview.")
+        if file_size_mb < 2:
+            text_content = file_data.decode('utf-8', errors='ignore')
+            st.text_area("📄 Text Content", value=text_content, height=250)
         else:
-            st.warning("⚠️ Text file is too large for live preview (>1MB). Please download.")
+            st.warning("⚠️ Text file too large for live preview. Please download.")
             
-    # --- PDF PREVIEW (Hardened for Cloud) ---
+    # --- PDF (The Microsoft Bypass Logic) ---
     elif file_ext == 'pdf':
-        if file_size_mb < 2.5:  # Standard browser limit for Base64 rendering
-            base64_pdf = base64.b64encode(file_data).decode('utf-8')
-            pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}#toolbar=0" width="100%" height="600px" style="border:none; border-radius:10px;"></iframe>'
-            st.markdown(pdf_display, unsafe_allow_html=True)
-        else:
-            st.warning(f"📦 File Size: {file_size_mb:.2f}MB. PDF is too large for browser preview. Integrity is 100% verified—please download below.")
+        base64_pdf = base64.b64encode(file_data).decode('utf-8')
+        
+        # Method A: Attempting Inline Frame (Works for most browsers)
+        pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}#toolbar=0" width="100%" height="600px" style="border:none; border-radius:10px; background:white;"></iframe>'
+        st.markdown(pdf_display, unsafe_allow_html=True)
+        
+        # Method B: The Microsoft Edge/Chrome Security Bypass Button
+        st.info("💡 **Browser blocked the preview?** If you see a 'Blocked' icon above, use the button below to view the file in a secure new tab.")
+        
+        # This creates a 'Safe Blob' link that Microsoft Edge trusts more than iframes
+        bypass_button = f'''
+            <a href="data:application/pdf;base64,{base64_pdf}" target="_blank" style="text-decoration: none;">
+                <div style="background-color: #3b82f6; color: white; padding: 12px; border-radius: 10px; text-align: center; font-weight: bold; margin-bottom: 20px; cursor: pointer;">
+                    🔓 Open Secure PDF Preview in New Tab
+                </div>
+            </a>
+        '''
+        st.markdown(bypass_button, unsafe_allow_html=True)
             
     else:
         st.info("📦 Preview not supported for this format, but the file is ready for download.")
@@ -78,7 +85,7 @@ with st.sidebar:
     st.write("🔍 **Integrity Mode:** SHA-256 Active")
     st.write("⚙️ **Algorithm:** AES-256 (Symmetric)")
     
-    if st.button("🗑️ Wipe Session Memory"):
+    if st.button("🗑️ Reset Application"):
         st.rerun()
 
 # Application Logic
@@ -97,12 +104,12 @@ if password:
             file_data = file_to_lock.getvalue()
             original_hash = calculate_hash(file_data)
             
-            st.write(f"**File Name:** {file_to_lock.name}")
-            st.write(f"**Original Hash:** `{original_hash}`")
+            st.write(f"**File:** {file_to_lock.name}")
+            st.write(f"**SHA-256 Fingerprint:** `{original_hash}`")
 
             if st.button("🚀 Execute Encryption"):
                 encrypted_data = fernet.encrypt(file_data)
-                st.success("✅ Encryption Successful! Data is now a secure ciphertext.")
+                st.success("✅ Encryption Successful!")
                 st.download_button(
                     label="📥 Download Encrypted (.bin) File",
                     data=encrypted_data,
@@ -121,11 +128,10 @@ if password:
                     encrypted_content = file_to_unlock.getvalue()
                     decrypted_content = fernet.decrypt(encrypted_content)
                     
-                    # File identification
                     original_name = file_to_unlock.name.replace("LOCKED_", "")
                     restored_hash = calculate_hash(decrypted_content)
                     
-                    st.success(f"🔓 Decryption Successful! Integrity Verified via SHA-256.")
+                    st.success(f"🔓 Decryption Successful! Integrity Verified.")
                     st.write(f"**Restored Hash:** `{restored_hash}`")
                     
                     st.divider()
@@ -139,9 +145,9 @@ if password:
                         mime="application/octet-stream"
                     )
                 except Exception:
-                    st.error("❌ Decryption Failed! Check your password or file integrity.")
+                    st.error("❌ Decryption Failed! Wrong password or file tampering detected.")
 else:
-    st.warning("👈 Please enter a Master Password in the sidebar to enter the vault.")
+    st.warning("👈 Enter your Master Password in the sidebar to enter the vault.")
 
 # --- 4. THE FOOTER ---
 st.markdown("---")
