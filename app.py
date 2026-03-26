@@ -29,20 +29,23 @@ def check_password_strength(pwd):
     return "✅ Excellent", "#008000"
 
 def show_preview(file_data, file_name):
-    """Renders a visual preview for supported file types."""
+    """UPDATED: Renders a visual preview compatible with Live Cloud links."""
     file_ext = file_name.split('.')[-1].lower()
     
     if file_ext in ['png', 'jpg', 'jpeg']:
-        # Fixed: Using width="stretch" to avoid terminal warnings in 2026
         st.image(file_data, caption="🖼️ Decrypted Preview", width="stretch")
+        
     elif file_ext == 'txt':
         try:
-            st.text_area("📄 Text Content", value=file_data.decode('utf-8'), height=250)
+            text_content = file_data.decode('utf-8', errors='ignore')
+            st.text_area("📄 Text Content", value=text_content, height=250)
         except:
-            st.error("Encoding Error: Content contains non-text data.")
+            st.error("Encoding Error: Could not display text preview.")
+            
     elif file_ext == 'pdf':
+        # Using iframe instead of embed for better browser compatibility on the web
         base64_pdf = base64.b64encode(file_data).decode('utf-8')
-        pdf_display = f'<embed src="data:application/pdf;base64,{base64_pdf}" width="100%" height="600" type="application/pdf">'
+        pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="600px" style="border:none;"></iframe>'
         st.markdown(pdf_display, unsafe_allow_html=True)
     else:
         st.info("📦 Preview not supported for this format, but the file is ready for download.")
@@ -83,13 +86,12 @@ if password:
             file_data = file_to_lock.getvalue()
             original_hash = calculate_hash(file_data)
             
-            col1, col2 = st.columns(2)
-            with col1: st.write(f"**File:** {file_to_lock.name}")
-            with col2: st.write(f"**Hash:** `{original_hash}`")
+            st.write(f"**File Name:** {file_to_lock.name}")
+            st.write(f"**Original Hash:** `{original_hash}`")
 
             if st.button("🚀 Execute Encryption"):
                 encrypted_data = fernet.encrypt(file_data)
-                st.success("✅ Encryption Successful! File is now unreadable.")
+                st.success("✅ Encryption Successful!")
                 st.download_button(
                     label="📥 Download Encrypted File",
                     data=encrypted_data,
@@ -130,5 +132,6 @@ if password:
 else:
     st.warning("👈 Enter a password in the sidebar to unlock the vault.")
 
+# --- 4. THE FOOTER ---
 st.markdown("---")
-st.caption("Winter School Cyber Project 2026 | Built by Tanmay")
+st.markdown("<center>Winter School Cyber Project 2026 | Built by <b>Tanmay Madan</b></center>", unsafe_allow_html=True)
